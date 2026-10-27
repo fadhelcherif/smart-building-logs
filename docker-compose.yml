@@ -75,6 +75,31 @@ services:
       timeout: 5s
       retries: 10
 
+  flask:
+    build: ./app
+    container_name: sb-flask
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - MONGO_URL=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./uploads:/app/uploads
+    ports:
+      - "8000:8000"
+    networks:
+      - smartbuilding-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 networks:
   smartbuilding-net:
 
