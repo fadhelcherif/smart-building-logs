@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Historique des recherches</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<table>
+  <tr><th>Date (UTC)</th><th>Critères</th><th>Résultats</th><th></th></tr>
+  {% for e in entries %}
+  <tr>
+    <td>{{ e.date }}</td>
+    <td>{{ e.criteria }}</td>
+    <td>{{ e.total }}</td>
+    <td><a href="{{ e.url }}">Relancer</a></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Aucune recherche enregistrée.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

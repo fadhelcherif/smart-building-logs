@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Recherche</h1>
+<form method="get" action="{{ url_for('search.search') }}">
+  <p>
+    <label>Texte : <input type="text" name="q" value="{{ params.q or '' }}" size="30"></label>
+    <label>Capteur : <input type="text" name="sensor_id" value="{{ params.sensor_id or '' }}"></label>
+  </p>
+  {% for field, label in (("zone", "Zone"), ("level", "Niveau"), ("type", "Type")) %}
+  <p class="choices"><strong>{{ label }} :</strong>
+    {% for value in choices[field] %}
+    <label><input type="checkbox" name="{{ field }}" value="{{ value }}"
+      {% if value in params.get(field, []) %}checked{% endif %}> {{ value }}</label>
+    {% endfor %}
+  </p>
+  {% endfor %}
+  <p>
+    <label>Du (UTC) : <input type="datetime-local" name="date_from" value="{{ params.date_from or '' }}"></label>
+    <label>Au (UTC) : <input type="datetime-local" name="date_to" value="{{ params.date_to or '' }}"></label>
+  </p>
+  <button type="submit">Rechercher</button>
+  <a href="{{ url_for('search.search') }}">Réinitialiser</a>
+</form>
+
+{% for message in errors %}
+<p class="error">{{ message }}</p>
+{% endfor %}
+
+{% if result is not none %}
+<p>
+  <strong>{{ result.total }}</strong> résultat(s) en {{ result.took }} ms.
+  <span class="source {{ 'cache' if from_cache else 'live' }}">
+    {% if from_cache %}Résultat depuis le cache Redis{% else %}Résultat depuis Elasticsearch{% endif %}
+  </span>
+</p>
+<table>
+  <tr><th>Date (UTC)</th><th>Capteur</th><th>Zone</th><th>Salle</th><th>Type</th><th>Valeur</th><th>Niveau</th><th>Message</th></tr>
+  {% for h in result.hits %}
+  <tr>
+    <td>{{ h["@timestamp"] }}</td>
+    <td>{{ h.sensor_id }}</td>
+    <td>{{ h.zone }}</td>
+    <td>{{ h.room }}</td>
+    <td>{{ h.type }}</td>
+    <td>{% if h.value is not none %}{{ h.value }} {{ h.unit or '' }}{% else %}-{% endif %}</td>
+    <td><span class="badge {{ h.level }}">{{ h.level }}</span></td>
+    <td>{{ h.message }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="8">Aucun résultat.</td></tr>
+  {% endfor %}
+</table>
+<p>
+  {% if prev_url %}<a href="{{ prev_url }}">&larr; Précédent</a>{% endif %}
+  Page {{ params.page }}
+  {% if next_url %}<a href="{{ next_url }}">Suivant &rarr;</a>{% endif %}
+</p>
+{% endif %}
+{% endblock %}

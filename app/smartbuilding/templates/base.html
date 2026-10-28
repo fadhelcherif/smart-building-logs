@@ -20,12 +20,22 @@
     .ok { background: #e5f4e4; color: #1d5c1a; padding: 10px; border-radius: 6px; }
     button { background: #1f3a5f; color: #fff; border: 0; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
     button.secondary { background: #888; }
+    .badge { color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #888; }
+    .badge.CRITICAL { background: #c62828; }
+    .badge.WARNING { background: #ef8100; }
+    .badge.ERROR { background: #7b3fa0; }
+    .badge.INFO { background: #888; }
+    .choices label { margin-right: 12px; }
+    .source.cache { color: #1d5c1a; font-weight: 600; }
+    .source.live { color: #1f3a5f; font-weight: 600; }
   </style>
 </head>
 <body>
   <nav>
     <a href="{{ url_for('uploads.upload') }}">Importer</a>
     <a href="{{ url_for('uploads.files') }}">Fichiers importés</a>
+    <a href="{{ url_for('search.search') }}">Recherche</a>
+    <a href="{{ url_for('search.history') }}">Historique</a>
   </nav>
   <main>{% block content %}{% endblock %}</main>
 </body>
