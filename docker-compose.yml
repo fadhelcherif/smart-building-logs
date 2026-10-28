@@ -48,6 +48,7 @@ services:
     volumes:
       - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
       - ./uploads:/usr/share/logstash/uploads
+      - ./logstash/config/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
     networks:
       - smartbuilding-net
     depends_on:

@@ -1,0 +1,4 @@
+- pipeline.id: csv
+  path.config: "/usr/share/logstash/pipeline/csv.conf"
+- pipeline.id: json
+  path.config: "/usr/share/logstash/pipeline/json.conf"
