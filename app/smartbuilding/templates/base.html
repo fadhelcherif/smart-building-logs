@@ -1,9 +1,14 @@
 <!doctype html>
 <html lang="fr">
+{% block head %}{% endblock %}
 <head>
   <meta charset="utf-8">
   <title>Smart Building</title>
   <style>
+        #drop-zone { display: block; border: 2px dashed #9aa8b8; border-radius: 8px; padding: 40px; text-align: center; color: #555; cursor: pointer; margin-bottom: 12px; }
+    #drop-zone.over { background: #e7f1fb; border-color: #1f3a5f; }
+    progress { width: 100%; height: 18px; }
+    td progress { width: 120px; }
     body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #222; }
     nav { background: #1f3a5f; padding: 12px 24px; }
     nav a { color: #fff; margin-right: 20px; text-decoration: none; font-weight: 600; }

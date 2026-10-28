@@ -1,7 +1,16 @@
 {% extends "base.html" %}
+
+{% block head %}
+{% if records|selectattr("status", "equalto", "en_cours")|list %}
+<meta http-equiv="refresh" content="5">
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <h1>Fichiers importés</h1>
-<p><a href="{{ url_for('uploads.files') }}">Actualiser</a></p>
+{% if records|selectattr("status", "equalto", "en_cours")|list %}
+<p>Ingestion en cours : la page se met à jour toutes les 5 secondes.</p>
+{% endif %}
 <table>
   <tr><th>Date (UTC)</th><th>Fichier</th><th>Format</th><th>Lignes</th><th>Invalides</th><th>Indexées</th><th>Statut</th></tr>
   {% for r in records %}
@@ -11,7 +20,13 @@
     <td>{{ r.format|upper }}</td>
     <td>{{ r.total_lines }}</td>
     <td>{{ r.invalid_lines }}</td>
-    <td>{{ r.indexed if r.indexed is defined else "-" }}</td>
+    <td>
+      {% if r.indexed is defined %}
+        {% set expected = r.total_lines - r.invalid_lines %}
+        <progress value="{{ r.indexed }}" max="{{ expected }}"></progress><br>
+        {{ r.indexed }} / {{ expected }}
+      {% else %}-{% endif %}
+    </td>
     <td>{{ labels[r.status] }}{% if r.reason %} ({{ r.reason }}){% endif %}</td>
   </tr>
   {% else %}

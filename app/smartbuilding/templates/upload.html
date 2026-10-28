@@ -3,8 +3,73 @@
 <h1>Importer un fichier de logs</h1>
 <p>Formats acceptés : CSV ou JSON (un objet JSON par ligne), 100 Mo maximum.</p>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
-<form method="post" enctype="multipart/form-data">
-  <input type="file" name="file" accept=".csv,.json" required>
+
+<form id="upload-form" method="post" enctype="multipart/form-data">
+  <label id="drop-zone" for="file-input">
+    <span id="drop-text">Glissez-déposez un fichier ici ou cliquez pour choisir</span>
+    <input id="file-input" type="file" name="file" accept=".csv,.json" hidden>
+  </label>
   <button type="submit">Analyser le fichier</button>
 </form>
+
+<div id="progress-box" hidden>
+  <progress id="progress-bar" value="0" max="100"></progress>
+  <p id="progress-text">0 %</p>
+</div>
+
+<script>
+  const form = document.getElementById("upload-form");
+  const zone = document.getElementById("drop-zone");
+  const input = document.getElementById("file-input");
+  const dropText = document.getElementById("drop-text");
+  const box = document.getElementById("progress-box");
+  const bar = document.getElementById("progress-bar");
+  const text = document.getElementById("progress-text");
+
+  function showName() {
+    if (input.files.length) dropText.textContent = input.files[0].name;
+  }
+  input.addEventListener("change", showName);
+
+  // Drag and drop: highlight the zone, then put the dropped file in the input
+  ["dragenter", "dragover"].forEach(name => zone.addEventListener(name, event => {
+    event.preventDefault();
+    zone.classList.add("over");
+  }));
+  ["dragleave", "drop"].forEach(name => zone.addEventListener(name, event => {
+    event.preventDefault();
+    zone.classList.remove("over");
+  }));
+  zone.addEventListener("drop", event => {
+    input.files = event.dataTransfer.files;
+    showName();
+  });
+
+  // Send the file ourselves to follow the progress
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    if (!input.files.length) {
+      dropText.textContent = "Choisissez d'abord un fichier.";
+      return;
+    }
+    const request = new XMLHttpRequest();
+    request.open("POST", form.action);
+    request.upload.onprogress = e => {
+      if (!e.lengthComputable) return;
+      const percent = Math.round(e.loaded / e.total * 100);
+      bar.value = percent;
+      text.textContent = percent + " %";
+    };
+    request.upload.onload = () => { text.textContent = "Fichier envoyé, analyse en cours..."; };
+    request.onload = () => {
+      // Flask answers with the preview page (or an error page): show it
+      document.open();
+      document.write(request.responseText);
+      document.close();
+    };
+    request.onerror = () => { text.textContent = "Erreur réseau, réessayez."; };
+    box.hidden = false;
+    request.send(new FormData(form));
+  });
+</script>
 {% endblock %}
