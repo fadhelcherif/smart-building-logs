@@ -17,6 +17,28 @@ services:
       timeout: 5s
       retries: 30
 
+
+  es-setup:
+    image: curlimages/curl:8.10.1
+    container_name: sb-es-setup
+    volumes:
+      - ./elasticsearch:/setup:ro
+    networks:
+      - smartbuilding-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        curl -sf -X PUT http://elasticsearch:9200/_ilm/policy/sensor-logs-policy
+        -H "Content-Type: application/json" --data-binary @/setup/ilm-policy.json &&
+        curl -sf -X PUT http://elasticsearch:9200/_index_template/sensor-logs
+        -H "Content-Type: application/json" --data-binary @/setup/index-template.json &&
+        echo " Elasticsearch configure"
+    restart: "no"
+    
+
   logstash:
     image: docker.elastic.co/logstash/logstash:${ELASTIC_VERSION}
     container_name: sb-logstash
@@ -29,8 +51,8 @@ services:
     networks:
       - smartbuilding-net
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      es-setup:
+        condition: service_completed_successfully
 
   kibana:
     image: docker.elastic.co/kibana/kibana:${ELASTIC_VERSION}

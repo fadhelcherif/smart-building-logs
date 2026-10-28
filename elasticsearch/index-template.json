@@ -1,0 +1,27 @@
+{
+  "index_patterns": ["sensor-logs-*"],
+  "priority": 200,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.lifecycle.name": "sensor-logs-policy"
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp":  { "type": "date" },
+        "event_id":    { "type": "keyword" },
+        "sensor_id":   { "type": "keyword" },
+        "zone":        { "type": "keyword" },
+        "floor":       { "type": "integer" },
+        "room":        { "type": "keyword" },
+        "type":        { "type": "keyword" },
+        "value":       { "type": "float" },
+        "unit":        { "type": "keyword" },
+        "level":       { "type": "keyword" },
+        "message":     { "type": "text", "fields": { "raw": { "type": "keyword" } } },
+        "source_file": { "type": "keyword" }
+      }
+    }
+  }
+}
