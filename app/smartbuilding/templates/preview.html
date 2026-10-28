@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ record.original_name }}</h1>
+<p>{{ report.total }} lignes, dont {{ report.invalid }} invalides.</p>
+
+{% if report.ok %}
+  <p class="ok">Le fichier est valide.{% if report.invalid %} Les lignes invalides seront ignorées.{% endif %}</p>
+{% else %}
+  <p class="error">Fichier rejeté : {{ report.reason }}</p>
+{% endif %}
+
+{% if report.errors %}
+<h3>Premières erreurs</h3>
+<ul>{% for e in report.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+{% endif %}
+
+{% if report.preview %}
+<h3>Aperçu des {{ report.preview|length }} premières lignes</h3>
+<table>
+  <tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr>
+  {% for row in report.preview %}
+  <tr>{% for c in columns %}<td>{{ row.get(c) if row.get(c) is not none else "" }}</td>{% endfor %}</tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<p>
+{% if report.ok %}
+  <form method="post" action="{{ url_for('uploads.confirm', record_id=record_id) }}" style="display:inline">
+    <button type="submit">Confirmer l'import</button>
+  </form>
+  <form method="post" action="{{ url_for('uploads.cancel', record_id=record_id) }}" style="display:inline">
+    <button type="submit" class="secondary">Annuler</button>
+  </form>
+{% else %}
+  <a href="{{ url_for('uploads.upload') }}">Importer un autre fichier</a>
+{% endif %}
+</p>
+{% endblock %}

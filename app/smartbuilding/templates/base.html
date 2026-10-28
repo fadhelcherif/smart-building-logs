@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Smart Building</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #222; }
+    nav { background: #1f3a5f; padding: 12px 24px; }
+    nav a { color: #fff; margin-right: 20px; text-decoration: none; font-weight: 600; }
+    main { max-width: 1000px; margin: 24px auto; background: #fff; padding: 24px; border-radius: 8px; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+    th { background: #eef1f5; }
+    .error { background: #fbebeb; color: #9b1c1c; padding: 10px; border-radius: 6px; }
+    .ok { background: #e5f4e4; color: #1d5c1a; padding: 10px; border-radius: 6px; }
+    button { background: #1f3a5f; color: #fff; border: 0; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+    button.secondary { background: #888; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('uploads.upload') }}">Importer</a>
+    <a href="{{ url_for('uploads.files') }}">Fichiers importés</a>
+  </nav>
+  <main>{% block content %}{% endblock %}</main>
+</body>
+</html>

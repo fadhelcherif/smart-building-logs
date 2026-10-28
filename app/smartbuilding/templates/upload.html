@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Importer un fichier de logs</h1>
+<p>Formats acceptés : CSV ou JSON (un objet JSON par ligne), 100 Mo maximum.</p>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post" enctype="multipart/form-data">
+  <input type="file" name="file" accept=".csv,.json" required>
+  <button type="submit">Analyser le fichier</button>
+</form>
+{% endblock %}
