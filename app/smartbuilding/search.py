@@ -1,16 +1,11 @@
-import hashlib
-import json
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, render_template, request, url_for
 
-bp = Blueprint("search", __name__)
+from .searchlib import (INDEX, MAX_RESULTS, MULTI_FIELDS, PAGE_SIZE, cache_get, cache_key, cache_set,
+                        parse_filters, parse_page, run_search)
 
-INDEX = "sensor-logs-*"
-PAGE_SIZE = 50
-MAX_RESULTS = 10000        # Elasticsearch limit on from + size
-CACHE_TTL = 60             # seconds
-DATE_FORMAT = "%Y-%m-%dT%H:%M"   # format of <input type="datetime-local">
+bp = Blueprint("search", __name__)
 
 # Fallback choices if the aggregation fails
 DEFAULT_CHOICES = {
@@ -18,93 +13,6 @@ DEFAULT_CHOICES = {
     "level": ["INFO", "WARNING", "CRITICAL", "ERROR"],
     "type": ["temperature", "humidity", "co2", "light", "presence", "electricity", "water", "heating"],
 }
-MULTI_FIELDS = ["zone", "level", "type"]
-
-
-# ---------- Redis cache (a Redis failure never breaks the search) ----------
-
-def cache_key(data):
-    # Same parameters -> same key (sorted JSON)
-    raw = json.dumps(data, sort_keys=True)
-    return "search:" + hashlib.sha256(raw.encode()).hexdigest()
-
-
-def cache_get(key):
-    try:
-        value = current_app.redis.get(key)
-        return json.loads(value) if value else None
-    except Exception:
-        return None
-
-
-def cache_set(key, value):
-    try:
-        current_app.redis.setex(key, CACHE_TTL, json.dumps(value))
-    except Exception:
-        pass
-
-
-# ---------- Parameters ----------
-
-def parse_params(args):
-    """Read and clean the query string. Returns (params, errors)."""
-    params, errors = {}, []
-
-    q = args.get("q", "").strip()
-    if q:
-        params["q"] = q
-    sensor_id = args.get("sensor_id", "").strip()
-    if sensor_id:
-        params["sensor_id"] = sensor_id
-    for field in MULTI_FIELDS:
-        values = sorted(set(v for v in args.getlist(field) if v))
-        if values:
-            params[field] = values
-
-    for field, label in (("date_from", "de début"), ("date_to", "de fin")):
-        text = args.get(field, "").strip()
-        if text:
-            try:
-                params[field] = datetime.fromisoformat(text).strftime(DATE_FORMAT)
-            except ValueError:
-                errors.append(f"La date {label} est invalide.")
-
-    page_text = args.get("page", "1").strip()
-    if page_text.isdigit() and int(page_text) >= 1:
-        params["page"] = int(page_text)
-    else:
-        params["page"] = 1
-        errors.append("Le numéro de page doit être un nombre positif.")
-    if (params["page"] - 1) * PAGE_SIZE + PAGE_SIZE > MAX_RESULTS:
-        params["page"] = 1
-        errors.append(f"Impossible d'afficher au-delà de {MAX_RESULTS} résultats : affinez votre recherche.")
-
-    if "date_from" in params and "date_to" in params and params["date_from"] > params["date_to"]:
-        errors.append("La date de début doit être avant la date de fin.")
-    return params, errors
-
-
-def build_query(params):
-    must, filters = [], []
-    if "q" in params:
-        must.append({"match": {"message": params["q"]}})
-    for field in MULTI_FIELDS:
-        if field in params:
-            filters.append({"terms": {field: params[field]}})
-    if "sensor_id" in params:
-        filters.append({"term": {"sensor_id": params["sensor_id"]}})
-
-    time_range = {}
-    if "date_from" in params:
-        time_range["gte"] = params["date_from"] + ":00Z"
-    if "date_to" in params:
-        time_range["lte"] = params["date_to"] + ":00Z||/m"   # "/m" = until the end of that minute
-    if time_range:
-        filters.append({"range": {"@timestamp": time_range}})
-
-    if not must and not filters:
-        return {"match_all": {}}
-    return {"bool": {"must": must, "filter": filters}}
 
 
 def describe(params):
@@ -121,37 +29,10 @@ def describe(params):
     if "sensor_id" in params:
         parts.append(f"capteur {params['sensor_id']}")
     if "date_from" in params:
-        parts.append("depuis le " + params["date_from"].replace("T", " à "))
+        parts.append("depuis le " + params["date_from"][:16].replace("T", " à "))
     if "date_to" in params:
-        parts.append("jusqu'au " + params["date_to"].replace("T", " à "))
+        parts.append("jusqu'au " + params["date_to"][:16].replace("T", " à "))
     return " ; ".join(parts) or "Aucun critère (tous les logs)"
-
-
-# ---------- Elasticsearch ----------
-
-def run_search(params):
-    """Returns (result, from_cache). Looks in Redis first, then Elasticsearch."""
-    key = cache_key(params)
-    result = cache_get(key)
-    if result:
-        return result, True
-
-    response = current_app.es.search(
-        index=INDEX,
-        query=build_query(params),
-        sort=[{"@timestamp": "desc"}],
-        from_=(params["page"] - 1) * PAGE_SIZE,
-        size=PAGE_SIZE,
-        track_total_hits=True,
-    )
-    hits = []
-    for hit in response["hits"]["hits"]:
-        row = hit["_source"]
-        row["@timestamp"] = row.get("@timestamp", "")[:19].replace("T", " ")
-        hits.append(row)
-    result = {"hits": hits, "total": response["hits"]["total"]["value"], "took": response["took"]}
-    cache_set(key, result)
-    return result, False
 
 
 def get_choices():
@@ -200,7 +81,9 @@ def save_history(params, total, from_cache):
 
 @bp.route("/search")
 def search():
-    params, errors = parse_params(request.args)
+    params, errors = parse_filters(request.args)
+    params["page"], page_errors = parse_page(request.args, PAGE_SIZE)
+    errors += page_errors
     choices = get_choices()
     context = {"params": params, "choices": choices, "errors": errors,
                "result": None, "from_cache": False, "page_size": PAGE_SIZE, "prev_url": None, "next_url": None}
@@ -211,6 +94,8 @@ def search():
         except Exception:
             context["errors"] = ["Elasticsearch est injoignable : la recherche est impossible pour le moment."]
             return render_template("search.html", **context)
+        for hit in result["hits"]:
+            hit["@timestamp"] = hit.get("@timestamp", "")[:19].replace("T", " ")
         context.update(result=result, from_cache=from_cache)
 
         # Save only a submitted search, not paging

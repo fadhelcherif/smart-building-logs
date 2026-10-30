@@ -42,6 +42,10 @@ def create_app():
     from .search import bp as search_bp
     app.register_blueprint(search_bp)
 
+    from .api import bp as api_bp, docs_bp
+    app.register_blueprint(api_bp)
+    app.register_blueprint(docs_bp)
+
     @app.errorhandler(413)
     def too_large(error):
         return render_template("upload.html", error="Fichier trop volumineux : 100 Mo maximum."), 413
